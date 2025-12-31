@@ -29,6 +29,7 @@ import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springaicommunity.watsonx.chat.tool.DefaultWatsonxAiToolParameterMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -125,6 +126,7 @@ public class WatsonxAiChatClientMultimodalityIT {
             watsonxAiChatApi,
             defaultOptions,
             ObservationRegistry.NOOP,
+            new DefaultWatsonxAiToolParameterMapper(),
             ToolCallingManager.builder().build(),
             new DefaultToolExecutionEligibilityPredicate(),
             RetryUtils.DEFAULT_RETRY_TEMPLATE);

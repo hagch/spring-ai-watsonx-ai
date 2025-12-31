@@ -26,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springaicommunity.watsonx.chat.tool.DefaultWatsonxAiToolParameterMapper;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -70,6 +71,7 @@ public class WatsonxAiChatModelTest {
             watsonxAiChatApi,
             defaultOptions,
             ObservationRegistry.NOOP,
+            new DefaultWatsonxAiToolParameterMapper(),
             ToolCallingManager.builder().build(),
             new DefaultToolExecutionEligibilityPredicate(),
             RetryUtils.DEFAULT_RETRY_TEMPLATE);

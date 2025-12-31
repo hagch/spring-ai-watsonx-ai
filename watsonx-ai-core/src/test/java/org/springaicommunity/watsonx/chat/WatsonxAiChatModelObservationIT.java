@@ -24,6 +24,7 @@ import io.micrometer.observation.tck.TestObservationRegistry;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springaicommunity.watsonx.chat.tool.DefaultWatsonxAiToolParameterMapper;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.observation.DefaultChatModelObservationConvention;
@@ -108,6 +109,7 @@ public class WatsonxAiChatModelObservationIT {
             watsonxAiChatApi,
             defaultOptions,
             observationRegistry,
+            new DefaultWatsonxAiToolParameterMapper(),
             ToolCallingManager.builder().build(),
             new DefaultToolExecutionEligibilityPredicate(),
             RetryUtils.DEFAULT_RETRY_TEMPLATE);

@@ -24,9 +24,13 @@ import java.util.Map;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springaicommunity.watsonx.chat.WatsonxAiChatRequest.TextChatParameterFunction;
+import org.springaicommunity.watsonx.chat.WatsonxAiChatRequest.TextChatParameterTool;
 import org.springaicommunity.watsonx.chat.message.TextChatMessage;
 import org.springaicommunity.watsonx.chat.message.TextChatMessage.TextChatFunctionCall;
 import org.springaicommunity.watsonx.chat.message.user.TextChatUserContent;
+import org.springaicommunity.watsonx.chat.tool.DefaultWatsonxAiToolParameterMapper;
+import org.springaicommunity.watsonx.chat.tool.WatsonxAiToolParameterMapper;
 import org.springaicommunity.watsonx.chat.util.ToolType;
 import org.springaicommunity.watsonx.chat.util.audio.AudioFormat;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -86,6 +90,7 @@ public class WatsonxAiChatModel implements ChatModel {
   private final WatsonxAiChatApi watsonxAiChatApi;
   private final WatsonxAiChatOptions defaulWatsonxAiChatOptions;
   private final ObservationRegistry observationRegistry;
+  private final WatsonxAiToolParameterMapper toolParameterMapper;
   private final ToolCallingManager toolCallingManager;
   private final ToolExecutionEligibilityPredicate toolExecutionEligibilityPredicate;
   private final RetryTemplate retryTemplate;
@@ -96,7 +101,8 @@ public class WatsonxAiChatModel implements ChatModel {
       final ObservationRegistry observationRegistry,
       final ToolCallingManager toolCallingManager,
       final ToolExecutionEligibilityPredicate toolExecutionEligibilityPredicate,
-      final RetryTemplate retryTemplate) {
+      final RetryTemplate retryTemplate,
+      WatsonxAiToolParameterMapper toolParameterMapper) {
     this(
         watsonxAiChatApi,
         WatsonxAiChatOptions.builder()
@@ -109,6 +115,7 @@ public class WatsonxAiChatModel implements ChatModel {
             .n(1)
             .build(),
         observationRegistry,
+        toolParameterMapper,
         toolCallingManager,
         toolExecutionEligibilityPredicate,
         retryTemplate);
@@ -118,9 +125,11 @@ public class WatsonxAiChatModel implements ChatModel {
       final WatsonxAiChatApi watsonxAiChatApi,
       final WatsonxAiChatOptions defaulWatsonxAiChatOptions,
       final ObservationRegistry observationRegistry,
+      WatsonxAiToolParameterMapper toolParameterMapper,
       final ToolCallingManager toolCallingManager,
       final ToolExecutionEligibilityPredicate toolExecutionEligibilityPredicate,
       final RetryTemplate retryTemplate) {
+    this.toolParameterMapper = toolParameterMapper;
     Assert.notNull(watsonxAiChatApi, "Watsonx.ai Chat API must not be null");
     Assert.notNull(defaulWatsonxAiChatOptions, "Default watsonx.ai Chat options must not be null");
     Assert.notNull(observationRegistry, "observationRegistry must not be null");
@@ -450,8 +459,8 @@ public class WatsonxAiChatModel implements ChatModel {
                         .map(
                             toolResponse ->
                                 new TextChatMessage(
-                                    toolResponse.name(),
                                     toolResponse.responseData(),
+                                    toolResponse.name(),
                                     toolResponse.id()))
                         .toList();
                   } else if (MessageType.USER.equals(message.getMessageType())) {
@@ -605,13 +614,13 @@ public class WatsonxAiChatModel implements ChatModel {
       List<ToolDefinition> toolDefinitions) {
     return toolDefinitions.stream()
         .map(
-            toolDefinition ->
-                new WatsonxAiChatRequest.TextChatParameterTool(
-                    ToolType.FUNCTION,
-                    new WatsonxAiChatRequest.TextChatParameterFunction(
-                        toolDefinition.name(),
-                        toolDefinition.description(),
-                        toolDefinition.inputSchema())))
+            toolDefinition -> {
+              var parameters = toolParameterMapper.convertSchema(toolDefinition.inputSchema());
+              return new TextChatParameterTool(
+                  ToolType.FUNCTION,
+                  new TextChatParameterFunction(
+                      toolDefinition.name(), toolDefinition.description(), parameters));
+            })
         .toList();
   }
 
@@ -674,6 +683,8 @@ public class WatsonxAiChatModel implements ChatModel {
     private WatsonxAiChatOptions options = WatsonxAiChatOptions.builder().build();
     private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
     private ToolCallingManager toolCallingManager = DEFAULT_TOOL_CALLING_MANAGER;
+    private WatsonxAiToolParameterMapper toolParameterMapper =
+        new DefaultWatsonxAiToolParameterMapper();
     private ToolExecutionEligibilityPredicate toolExecutionEligibilityPredicate =
         new DefaultToolExecutionEligibilityPredicate();
     private RetryTemplate retryTemplate = RetryUtils.DEFAULT_RETRY_TEMPLATE;
@@ -704,6 +715,11 @@ public class WatsonxAiChatModel implements ChatModel {
       return this;
     }
 
+    public Builder toolParameterMapper(WatsonxAiToolParameterMapper watsonxAiToolParameterMapper) {
+      this.toolParameterMapper = watsonxAiToolParameterMapper;
+      return this;
+    }
+
     public Builder retryTemplate(RetryTemplate retryTemplate) {
       this.retryTemplate = retryTemplate;
       return this;
@@ -714,6 +730,7 @@ public class WatsonxAiChatModel implements ChatModel {
           this.watsonxAiChatApi,
           this.options,
           this.observationRegistry,
+          this.toolParameterMapper,
           this.toolCallingManager,
           this.toolExecutionEligibilityPredicate,
           this.retryTemplate);
